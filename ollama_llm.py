@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import httpx
@@ -339,9 +340,13 @@ class OllamaLlm(BaseLlm):
         parts: List[types.Part] = []
 
         content_text = message.get("content", "")
-        if content_text:
-            parts.append(types.Part.from_text(text=content_text))
 
+        # Check if content_text contains JSON function calls that should be parsed
+        # some models have broken response format
+        function_calls_parsed = False
+        self.re_parse_tools(content_text, function_calls_parsed, parts)
+
+        # Also check for proper tool_calls in the message structure
         for tool_call in message.get("tool_calls", []) or []:
             function_data = tool_call.get("function", {})
             name = function_data.get("name")
@@ -366,6 +371,45 @@ class OllamaLlm(BaseLlm):
             usage_metadata=self._extract_usage(data),
             finish_reason=self._map_finish_reason(data.get("done_reason")),
         )
+
+    def re_parse_tools(self, content_text, function_calls_parsed, parts):
+        if content_text:
+            # Look for JSON function calls in the text content
+            json_pattern = r'\[?\{[^}]*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[^}]*\}\s*\}\]?'
+            matches = re.findall(json_pattern, content_text)
+
+            if matches:
+                # Parse JSON function calls from text
+                for match in matches:
+                    try:
+                        # Clean up the match - remove surrounding brackets if present
+                        clean_match = match.strip('[]')
+                        func_data = json.loads(clean_match)
+
+                        name = func_data.get("name")
+                        arguments = func_data.get("arguments", {})
+
+                        if name:
+                            part = types.Part.from_function_call(name=name, args=arguments)
+                            parts.append(part)
+                            function_calls_parsed = True
+
+                    except json.JSONDecodeError:
+                        logger.debug("Failed to parse function call from text: %s", match)
+                        continue
+
+                # If we found function calls in text, remove them from the text content
+                if function_calls_parsed:
+                    cleaned_text = re.sub(json_pattern, '', content_text).strip()
+                    # Only add text part if there's meaningful content left
+                    if cleaned_text and not re.match(r'^\s*$', cleaned_text):
+                        parts.insert(0, types.Part.from_text(text=cleaned_text))
+                else:
+                    # No function calls found, add the original text
+                    parts.append(types.Part.from_text(text=content_text))
+            else:
+                # No function call patterns found, add the original text
+                parts.append(types.Part.from_text(text=content_text))
 
     async def _stream_chat(self, client: httpx.AsyncClient, payload: Dict[str, Any]) -> AsyncGenerator[LlmResponse, None]:
         url = "/api/chat"
