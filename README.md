@@ -2,6 +2,8 @@
 
 This repository showcases a set of Google ADK (Agent Development Kit) experiments that connect locally running Ollama large language models with multi-agent workflows. The labs demonstrate two complementary experiences:
 
+> Based on the [Google Cloud Skills Boost ADK course](https://www.cloudskillsboost.google/course_templates/1382/labs/module_name)
+
 - Coordinated travel-planning agents that route users between brainstorming and detailed itinerary planning.
 - A collaborative writers room that researches, drafts, critiques, and persists historical biopic movie pitches.
 
