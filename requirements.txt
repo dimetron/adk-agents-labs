@@ -1,0 +1,6 @@
+langchain>=0.3.21
+langchain-community==0.3.20
+wikipedia==1.4.0
+python-dotenv==1.0.0
+litellm==1.76.0
+httpx
