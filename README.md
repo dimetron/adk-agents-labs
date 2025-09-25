@@ -5,6 +5,7 @@ This repository showcases a set of Google ADK (Agent Development Kit) experiment
 - Coordinated travel-planning agents that route users between brainstorming and detailed itinerary planning.
 - A collaborative writers room that researches, drafts, critiques, and persists historical biopic movie pitches.
 
+![System Flow](images/flow.png)
 
 ## Prerequisites
 
